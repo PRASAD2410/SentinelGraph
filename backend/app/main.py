@@ -78,8 +78,12 @@ async def upload(file:UploadFile=File(...)):
  return process(text,f'Uploaded: {file.filename}','Uploaded file')
 @app.post('/api/assistant')
 def assistant(payload:Question):
- provider=get_llm_provider(); context={'entities':analytics()[:12],'leads':leads()[:8],'reports':[{'id':r['id'],'title':r['title'],'date':r['date']} for r in reports[-12:]]}
+ provider=get_llm_provider(); question=payload.question.lower(); persons=[n['label'] for n in nodes.values() if n['type']=='Person']; context={'entities':analytics()[:12],'leads':leads()[:8],'reports':[{'id':r['id'],'title':r['title'],'date':r['date'],'source':r['source'],'text_excerpt':r['text'][:12000]} for r in reports[-4:]]}
+ if any(term in question for term in ('culprit','criminal','guilty','guilt')):
+  named=', '.join(persons) if persons else 'no people were confidently extracted'
+  answer=f"I cannot identify ‘culprits’ or determine guilt from these records. The people explicitly named in the current uploaded sources are: {named}. Their presence in a report or graph is a reported association that requires independent verification and any legal outcome must come from the court record."
+  return {'answer':answer,'disclaimer':'This response summarizes reported data and potential leads only. It is not proof of criminality.'}
  if provider.available:
-  answer=provider.generate(f'''You are SentinelGraph's cautious investigation assistant. Answer only from this case context. Be concise, cite report IDs when available, identify uncertainty, and never claim guilt or advise enforcement action. Use “reported”, “possible lead”, and “requires verification”.\nCASE CONTEXT:{context}\nQUESTION:{payload.question}''') or 'Gemini is temporarily unavailable. Please try again.'
+  answer=provider.generate(f'''You are SentinelGraph's cautious investigation assistant. Answer only from the case context and uploaded text excerpts. Be directly useful: answer who, what, when, where, relationship, and case-outcome questions when the source text states them. Cite report IDs. Identify uncertainty, never claim guilt, and never advise enforcement action. Use “reported”, “named in the record”, “possible lead”, and “requires verification”. If the source does not answer the question, say so clearly.\nCASE CONTEXT:{context}\nQUESTION:{payload.question}''') or 'Gemini is temporarily unavailable. Please try again.'
  else: answer=f'Gemini is not configured. This workspace contains {len(nodes)} entities, {len(edges)} reported relationships, and {len(reports)} source records. Add GEMINI_API_KEY to .env to enable contextual chat.'
  return {'answer':answer,'disclaimer':'This response summarizes reported data and potential leads only. It is not proof of criminality.'}
