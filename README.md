@@ -59,3 +59,7 @@ The app deliberately retains an in-memory cache so the demo works immediately. T
 - Keep raw source reports, confidence, analyst review state, and provenance with all findings.
 - Never represent graph centrality or rule matches as guilt, identity verification, or a legal conclusion.
 - Require authorized access, human review, retention controls, audit logging, and jurisdiction-specific privacy/legal review before using real-world data.
+
+## Hosting on Render
+
+Deploy the API first from the repository root using `render.yaml`. Set `GEMINI_API_KEY` in Render's secret-environment-variable prompt; never commit it. Once Render provides the API URL, deploy `frontend/` as a Static Site with build command `npm install && npm run build`, publish directory `dist`, and build-time environment variable `VITE_API_URL` set to the API URL. Finally set the API service's `FRONTEND_ORIGIN` to the Static Site URL and redeploy it.
